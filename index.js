@@ -1,6 +1,7 @@
 import { WechatyBuilder } from 'wechaty';
 import dotenv from 'dotenv';
 import { askDeepSeek } from './deepseek.js';
+import conversationManager from './conversationManager.js';
 
 dotenv.config();
 
@@ -51,15 +52,37 @@ bot.on('message', async (message) => {
       return;
     }
 
+    // 检查是否是清除历史指令
+    if (question === '清除记忆' || question === '清空记忆' || question === '重置对话') {
+      const userId = contact.id;
+      conversationManager.clearHistory(userId);
+      await message.say('✅ 已清除对话记忆，开始新的对话！');
+      console.log(`🗑️ 已清除用户 ${contact.name()} 的对话历史`);
+      return;
+    }
+
     console.log(`📝 处理问题: ${question}`);
 
     // 发送"正在思考"的提示
     await message.say('正在思考中...');
 
-    // 调用 DeepSeek API 获取回答
-    const answer = await askDeepSeek(question);
+    // 获取用户ID（用于区分不同用户的对话历史）
+    const userId = contact.id;
+
+    // 添加用户消息到历史
+    conversationManager.addUserMessage(userId, question);
+
+    // 获取对话历史
+    const history = conversationManager.getHistory(userId);
+
+    // 调用 DeepSeek API 获取回答（传入历史记录）
+    const answer = await askDeepSeek(question, history);
+
+    // 添加 AI 回复到历史
+    conversationManager.addAssistantMessage(userId, answer);
 
     console.log(`💡 回答: ${answer}`);
+    console.log(`📊 用户 ${contact.name()} 当前对话轮数: ${conversationManager.getConversationCount(userId)}`);
 
     // 发送回答
     if (room) {

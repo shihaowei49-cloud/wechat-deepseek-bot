@@ -9,28 +9,33 @@ const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.c
 /**
  * 调用 DeepSeek API 获取回答
  * @param {string} question - 用户的问题
+ * @param {Array} conversationHistory - 对话历史（可选）
  * @returns {Promise<string>} - AI 的回答
  */
-export async function askDeepSeek(question) {
+export async function askDeepSeek(question, conversationHistory = []) {
   try {
     if (!DEEPSEEK_API_KEY) {
       throw new Error('DEEPSEEK_API_KEY 未配置，请在 .env 文件中设置');
     }
 
+    // 构建消息数组：system prompt + 历史对话 + 当前问题
+    const messages = [
+      {
+        role: 'system',
+        content: '你是一个专业、友好的智能助手。请提供详细、准确、有深度的回答，帮助用户全面理解问题。回答时可以包含解释、例子和相关背景知识。你能记住对话上下文，可以基于之前的对话内容进行回答。'
+      },
+      ...conversationHistory,
+      {
+        role: 'user',
+        content: question
+      }
+    ];
+
     const response = await axios.post(
       DEEPSEEK_API_URL,
       {
         model: 'deepseek-chat',
-        messages: [
-          {
-            role: 'system',
-            content: '你是一个专业、友好的智能助手。请提供详细、准确、有深度的回答，帮助用户全面理解问题。回答时可以包含解释、例子和相关背景知识。'
-          },
-          {
-            role: 'user',
-            content: question
-          }
-        ],
+        messages: messages,
         temperature: 0.7,
         max_tokens: 4000
       },
