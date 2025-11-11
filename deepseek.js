@@ -24,7 +24,7 @@ export async function askDeepSeek(question) {
         messages: [
           {
             role: 'system',
-            content: '你是一个智能助手，请用简洁、准确的方式回答用户的问题。'
+            content: '你是一个专业、友好的智能助手。请提供详细、准确、有深度的回答，帮助用户全面理解问题。回答时可以包含解释、例子和相关背景知识。'
           },
           {
             role: 'user',
@@ -32,7 +32,7 @@ export async function askDeepSeek(question) {
           }
         ],
         temperature: 0.7,
-        max_tokens: 2000
+        max_tokens: 4000
       },
       {
         headers: {
