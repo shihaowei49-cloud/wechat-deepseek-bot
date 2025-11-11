@@ -4,7 +4,7 @@ import { askDeepSeek } from './deepseek.js';
 
 dotenv.config();
 
-const TRIGGER_PREFIX = process.env.TRIGGER_PREFIX || 'shihao';
+const TRIGGER_PREFIX = process.env.TRIGGER_PREFIX || 'aishihao';
 
 // 创建微信机器人实例
 const bot = WechatyBuilder.build({
@@ -47,7 +47,7 @@ bot.on('message', async (message) => {
     const question = text.substring(TRIGGER_PREFIX.length).trim();
 
     if (!question) {
-      await message.say('你好！我是 DeepSeek 智能助手。请在 "shihao" 后面输入你的问题。');
+      await message.say('你好！我是 DeepSeek 智能助手。请在 "aishihao" 后面输入你的问题。');
       return;
     }
 

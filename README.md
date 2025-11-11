@@ -1,10 +1,10 @@
 # 微信 DeepSeek 智能体
 
-一个基于 Wechaty 的微信机器人，集成 DeepSeek API，当消息以 "shihao" 开头时自动回答问题。
+一个基于 Wechaty 的微信机器人，集成 DeepSeek API，当消息以 "aishihao" 开头时自动回答问题。
 
 ## 功能特点
 
-- 🤖 自动检测以 "shihao" 开头的消息
+- 🤖 自动检测以 "aishihao" 开头的消息
 - 💬 将问题发送给 DeepSeek API 并返回智能回答
 - 👥 支持私聊和群聊
 - ⚡ 快速响应，实时处理
@@ -30,7 +30,7 @@ cp .env.example .env
 ```env
 DEEPSEEK_API_KEY=your_deepseek_api_key_here
 DEEPSEEK_API_URL=https://api.deepseek.com/v1/chat/completions
-TRIGGER_PREFIX=shihao
+TRIGGER_PREFIX=aishihao
 ```
 
 ### 3. 获取 DeepSeek API Key
@@ -57,12 +57,12 @@ npm start
 直接给机器人发送消息，格式为：
 
 ```
-shihao 你的问题
+aishihao 你的问题
 ```
 
 例如：
 ```
-shihao 什么是人工智能？
+aishihao 什么是人工智能？
 ```
 
 ### 群聊使用
@@ -70,7 +70,7 @@ shihao 什么是人工智能？
 在群里发送消息，格式相同：
 
 ```
-shihao 北京今天天气怎么样？
+aishihao 北京今天天气怎么样？
 ```
 
 机器人会自动回复并 @ 你。
@@ -83,7 +83,7 @@ shihao 北京今天天气怎么样？
 |--------|------|--------|
 | `DEEPSEEK_API_KEY` | DeepSeek API 密钥 | 必填 |
 | `DEEPSEEK_API_URL` | DeepSeek API 地址 | https://api.deepseek.com/v1/chat/completions |
-| `TRIGGER_PREFIX` | 触发前缀 | shihao |
+| `TRIGGER_PREFIX` | 触发前缀 | aishihao |
 
 ### 修改触发前缀
 
@@ -186,7 +186,7 @@ npm run pm2:restart
    ```
    DEEPSEEK_API_KEY=your_deepseek_api_key
    DEEPSEEK_API_URL=https://api.deepseek.com/v1/chat/completions
-   TRIGGER_PREFIX=shihao
+   TRIGGER_PREFIX=aishihao
    ```
 
 4. **部署完成**
