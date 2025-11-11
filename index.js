@@ -54,10 +54,13 @@ bot.on('message', async (message) => {
 
     // 检查是否是清除历史指令
     if (question === '清除记忆' || question === '清空记忆' || question === '重置对话') {
-      const userId = contact.id;
-      conversationManager.clearHistory(userId);
+      // 使用群ID或用户ID作为上下文ID
+      const contextId = room ? room.id : contact.id;
+      const contextName = room ? `群聊【${await room.topic()}】` : `用户【${contact.name()}】`;
+
+      conversationManager.clearHistory(contextId);
       await message.say('✅ 已清除对话记忆，开始新的对话！');
-      console.log(`🗑️ 已清除用户 ${contact.name()} 的对话历史`);
+      console.log(`🗑️ 已清除${contextName}的对话历史`);
       return;
     }
 
@@ -66,23 +69,24 @@ bot.on('message', async (message) => {
     // 发送"正在思考"的提示
     await message.say('正在思考中...');
 
-    // 获取用户ID（用于区分不同用户的对话历史）
-    const userId = contact.id;
+    // 获取上下文ID：群聊使用群ID，私聊使用用户ID
+    const contextId = room ? room.id : contact.id;
+    const contextName = room ? await room.topic() : contact.name();
 
     // 添加用户消息到历史
-    conversationManager.addUserMessage(userId, question);
+    conversationManager.addUserMessage(contextId, question);
 
     // 获取对话历史
-    const history = conversationManager.getHistory(userId);
+    const history = conversationManager.getHistory(contextId);
 
     // 调用 DeepSeek API 获取回答（传入历史记录）
     const answer = await askDeepSeek(question, history);
 
     // 添加 AI 回复到历史
-    conversationManager.addAssistantMessage(userId, answer);
+    conversationManager.addAssistantMessage(contextId, answer);
 
     console.log(`💡 回答: ${answer}`);
-    console.log(`📊 用户 ${contact.name()} 当前对话轮数: ${conversationManager.getConversationCount(userId)}`);
+    console.log(`📊 ${room ? '群聊' : '私聊'}【${contextName}】当前对话轮数: ${conversationManager.getConversationCount(contextId)}`);
 
     // 发送回答
     if (room) {

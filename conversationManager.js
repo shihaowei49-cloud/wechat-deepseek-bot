@@ -1,15 +1,16 @@
 /**
  * 对话历史管理器
- * 为每个用户维护独立的对话历史
+ * 为每个群聊（或私聊）维护独立的对话历史
  */
 class ConversationManager {
-  constructor(maxHistoryPerUser = 10, timeoutMinutes = 30) {
-    // 存储格式: { userId: [messages] }
+  constructor(maxHistoryPerContext = 10, timeoutMinutes = 30) {
+    // 存储格式: { contextId: [messages] }
+    // contextId 可以是群ID或用户ID
     this.conversations = new Map();
-    // 存储最后活动时间: { userId: timestamp }
+    // 存储最后活动时间: { contextId: timestamp }
     this.lastActivityTime = new Map();
-    // 每个用户最多保留的对话轮数（一问一答算一轮）
-    this.maxHistoryPerUser = maxHistoryPerUser;
+    // 每个上下文最多保留的对话轮数（一问一答算一轮）
+    this.maxHistoryPerContext = maxHistoryPerContext;
     // 对话超时时间（分钟）
     this.timeoutMinutes = timeoutMinutes;
     // 超时时间（毫秒）
@@ -18,68 +19,68 @@ class ConversationManager {
 
   /**
    * 添加用户消息到历史
-   * @param {string} userId - 用户ID
+   * @param {string} contextId - 上下文ID（群ID或用户ID）
    * @param {string} question - 用户的问题
    */
-  addUserMessage(userId, question) {
+  addUserMessage(contextId, question) {
     // 检查是否超时，如果超时则清除历史
-    this._checkAndClearIfTimeout(userId);
+    this._checkAndClearIfTimeout(contextId);
 
-    if (!this.conversations.has(userId)) {
-      this.conversations.set(userId, []);
+    if (!this.conversations.has(contextId)) {
+      this.conversations.set(contextId, []);
     }
 
-    const history = this.conversations.get(userId);
+    const history = this.conversations.get(contextId);
     history.push({
       role: 'user',
       content: question
     });
 
     // 更新最后活动时间
-    this.lastActivityTime.set(userId, Date.now());
+    this.lastActivityTime.set(contextId, Date.now());
 
     // 如果历史记录过长，删除最早的一轮对话（一问一答）
-    this._trimHistory(userId);
+    this._trimHistory(contextId);
   }
 
   /**
    * 添加 AI 回复到历史
-   * @param {string} userId - 用户ID
+   * @param {string} contextId - 上下文ID（群ID或用户ID）
    * @param {string} answer - AI 的回答
    */
-  addAssistantMessage(userId, answer) {
-    if (!this.conversations.has(userId)) {
-      this.conversations.set(userId, []);
+  addAssistantMessage(contextId, answer) {
+    if (!this.conversations.has(contextId)) {
+      this.conversations.set(contextId, []);
     }
 
-    const history = this.conversations.get(userId);
+    const history = this.conversations.get(contextId);
     history.push({
       role: 'assistant',
       content: answer
     });
 
     // 更新最后活动时间
-    this.lastActivityTime.set(userId, Date.now());
+    this.lastActivityTime.set(contextId, Date.now());
 
-    this._trimHistory(userId);
+    this._trimHistory(contextId);
   }
 
   /**
-   * 获取用户的对话历史
-   * @param {string} userId - 用户ID
+   * 获取对话历史
+   * @param {string} contextId - 上下文ID（群ID或用户ID）
    * @returns {Array} 消息历史数组
    */
-  getHistory(userId) {
-    return this.conversations.get(userId) || [];
+  getHistory(contextId) {
+    return this.conversations.get(contextId) || [];
   }
 
   /**
-   * 清除用户的对话历史
-   * @param {string} userId - 用户ID
+   * 清除对话历史
+   * @param {string} contextId - 上下文ID（群ID或用户ID）
    */
-  clearHistory(userId) {
-    this.conversations.delete(userId);
-    this.lastActivityTime.delete(userId);
+  clearHistory(contextId) {
+    this.conversations.delete(contextId);
+    this.lastActivityTime.delete(contextId);
   }
 
   /**
@@ -92,47 +93,47 @@ class ConversationManager {
 
   /**
    * 修剪历史记录，保持在限制范围内
-   * @param {string} userId - 用户ID
+   * @param {string} contextId - 上下文ID
    * @private
    */
-  _trimHistory(userId) {
-    const history = this.conversations.get(userId);
+  _trimHistory(contextId) {
+    const history = this.conversations.get(contextId);
     if (!history) return;
 
     // 保留最近的 N 轮对话（N*2 条消息）
-    const maxMessages = this.maxHistoryPerUser * 2;
+    const maxMessages = this.maxHistoryPerContext * 2;
     if (history.length > maxMessages) {
       // 删除最早的消息，保留最新的
       const trimmed = history.slice(history.length - maxMessages);
-      this.conversations.set(userId, trimmed);
+      this.conversations.set(contextId, trimmed);
     }
   }
 
   /**
-   * 获取当前管理的用户数量
+   * 获取当前管理的上下文数量（群聊+私聊）
    * @returns {number}
    */
-  getUserCount() {
+  getContextCount() {
     return this.conversations.size;
   }
 
   /**
-   * 获取某个用户的对话轮数
-   * @param {string} userId - 用户ID
+   * 获取某个上下文的对话轮数
+   * @param {string} contextId - 上下文ID
    * @returns {number}
    */
-  getConversationCount(userId) {
-    const history = this.getHistory(userId);
+  getConversationCount(contextId) {
+    const history = this.getHistory(contextId);
     return Math.floor(history.length / 2);
   }
 
   /**
-   * 检查用户对话是否超时，如果超时则清除
-   * @param {string} userId - 用户ID
+   * 检查对话是否超时，如果超时则清除
+   * @param {string} contextId - 上下文ID
    * @private
    */
-  _checkAndClearIfTimeout(userId) {
-    const lastTime = this.lastActivityTime.get(userId);
+  _checkAndClearIfTimeout(contextId) {
+    const lastTime = this.lastActivityTime.get(contextId);
 
     // 如果没有记录，说明是新对话，不需要清除
     if (!lastTime) {
@@ -144,18 +145,18 @@ class ConversationManager {
 
     // 如果超过超时时间，清除历史
     if (timeSinceLastActivity > this.timeoutMs) {
-      console.log(`⏰ 用户对话超时 (${this.timeoutMinutes}分钟)，已自动清除历史记录`);
-      this.clearHistory(userId);
+      console.log(`⏰ 对话超时 (${this.timeoutMinutes}分钟)，已自动清除历史记录`);
+      this.clearHistory(contextId);
     }
   }
 
   /**
-   * 获取用户距离上次活动的时间（分钟）
-   * @param {string} userId - 用户ID
+   * 获取距离上次活动的时间（分钟）
+   * @param {string} contextId - 上下文ID
    * @returns {number} 分钟数，如果没有记录返回 -1
    */
-  getTimeSinceLastActivity(userId) {
-    const lastTime = this.lastActivityTime.get(userId);
+  getTimeSinceLastActivity(contextId) {
+    const lastTime = this.lastActivityTime.get(contextId);
     if (!lastTime) {
       return -1;
     }
