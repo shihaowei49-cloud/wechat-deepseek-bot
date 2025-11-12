@@ -2,6 +2,7 @@ import { WechatyBuilder } from 'wechaty';
 import dotenv from 'dotenv';
 import { askDeepSeek } from './deepseek.js';
 import conversationManager from './conversationManager.js';
+import http from 'http';
 
 dotenv.config();
 
@@ -206,10 +207,33 @@ async function restartBot() {
   }
 }
 
+// 创建 HTTP 健康检查服务器（用于 Zeabur 等云平台）
+const PORT = process.env.PORT || 3000;
+const server = http.createServer((req, res) => {
+  if (req.url === '/' || req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      status: 'ok',
+      service: 'wechat-deepseek-bot',
+      isLoggedIn: isLoggedIn,
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString()
+    }));
+  } else {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not Found');
+  }
+});
+
+server.listen(PORT, () => {
+  console.log(`🌐 HTTP 健康检查服务器已启动，监听端口: ${PORT}`);
+});
+
 // 优雅退出
 process.on('SIGINT', async () => {
   console.log('\n正在关闭机器人...');
   stopHeartbeat();
+  server.close();
   await bot.stop();
   process.exit(0);
 });
