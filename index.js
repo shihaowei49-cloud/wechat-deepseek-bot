@@ -7,6 +7,11 @@ dotenv.config();
 
 const TRIGGER_PREFIX = process.env.TRIGGER_PREFIX || 'aishihao';
 
+// 重连配置
+let isLoggedIn = false;
+let heartbeatInterval = null;
+const HEARTBEAT_INTERVAL = 60000; // 60秒心跳检测
+
 // 创建微信机器人实例
 const bot = WechatyBuilder.build({
   name: 'deepseek-bot',
@@ -22,11 +27,28 @@ bot.on('scan', (qrcode, status) => {
 // 监听登录成功事件
 bot.on('login', (user) => {
   console.log(`✅ 用户 ${user} 登录成功`);
+  isLoggedIn = true;
+
+  // 启动心跳检测
+  startHeartbeat();
 });
 
 // 监听登出事件
 bot.on('logout', (user) => {
   console.log(`❌ 用户 ${user} 已登出`);
+  isLoggedIn = false;
+
+  // 停止心跳检测
+  stopHeartbeat();
+
+  // 尝试重新启动
+  console.log('⚠️ 检测到登出，5秒后尝试重新启动...');
+  setTimeout(() => {
+    if (!isLoggedIn) {
+      console.log('🔄 正在重新启动机器人...');
+      restartBot();
+    }
+  }, 5000);
 });
 
 // 监听消息事件
@@ -105,6 +127,17 @@ bot.on('message', async (message) => {
 // 监听错误事件
 bot.on('error', (error) => {
   console.error('机器人错误:', error);
+
+  // 如果是致命错误，尝试重启
+  if (error.message.includes('ETIMEDOUT') || error.message.includes('ECONNRESET')) {
+    console.log('⚠️ 检测到网络错误，30秒后尝试重启...');
+    setTimeout(() => {
+      if (!isLoggedIn) {
+        console.log('🔄 正在重新启动机器人...');
+        restartBot();
+      }
+    }, 30000);
+  }
 });
 
 // 启动机器人
@@ -118,9 +151,65 @@ bot.start()
     process.exit(1);
   });
 
+// 心跳检测函数
+function startHeartbeat() {
+  stopHeartbeat(); // 先停止旧的心跳
+
+  heartbeatInterval = setInterval(async () => {
+    if (isLoggedIn) {
+      try {
+        // 检查机器人状态
+        const isReady = bot.isLoggedIn;
+        if (!isReady) {
+          console.log('⚠️ 心跳检测：机器人未登录状态');
+          isLoggedIn = false;
+          stopHeartbeat();
+        } else {
+          console.log('💓 心跳检测：机器人运行正常');
+        }
+      } catch (error) {
+        console.error('心跳检测失败:', error.message);
+      }
+    }
+  }, HEARTBEAT_INTERVAL);
+
+  console.log('💓 心跳检测已启动');
+}
+
+function stopHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+    console.log('💔 心跳检测已停止');
+  }
+}
+
+// 重启机器人函数
+async function restartBot() {
+  try {
+    console.log('🔄 正在停止当前机器人实例...');
+    stopHeartbeat();
+
+    await bot.stop();
+
+    console.log('🔄 等待3秒后重新启动...');
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    console.log('🔄 正在重新启动机器人...');
+    await bot.start();
+
+    console.log('✅ 机器人重启完成，等待扫码登录');
+  } catch (error) {
+    console.error('❌ 重启失败:', error);
+    console.log('⚠️ 将在60秒后再次尝试重启...');
+    setTimeout(() => restartBot(), 60000);
+  }
+}
+
 // 优雅退出
 process.on('SIGINT', async () => {
   console.log('\n正在关闭机器人...');
+  stopHeartbeat();
   await bot.stop();
   process.exit(0);
 });
