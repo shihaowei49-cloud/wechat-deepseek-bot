@@ -21,14 +21,19 @@ const bot = WechatyBuilder.build({
 
 // 监听扫码登录事件
 bot.on('scan', (qrcode, status) => {
+  const qrcodeUrl = `https://wechaty.js.org/qrcode/${encodeURIComponent(qrcode)}`;
+  latestQrCode = qrcodeUrl; // 保存最新的二维码链接
+
   console.log(`扫码状态: ${status}`);
-  console.log(`请使用微信扫描二维码登录: https://wechaty.js.org/qrcode/${encodeURIComponent(qrcode)}`);
+  console.log(`请使用微信扫描二维码登录: ${qrcodeUrl}`);
+  console.log(`\n💡 提示：访问 http://localhost:${PORT}/health 可查看最新二维码链接`);
 });
 
 // 监听登录成功事件
 bot.on('login', (user) => {
   console.log(`✅ 用户 ${user} 登录成功`);
   isLoggedIn = true;
+  latestQrCode = null; // 清空二维码链接
 
   // 启动心跳检测
   startHeartbeat();
@@ -209,6 +214,8 @@ async function restartBot() {
 
 // 创建 HTTP 健康检查服务器（用于 Zeabur 等云平台）
 const PORT = process.env.PORT || 3000;
+let latestQrCode = null; // 存储最新的二维码链接
+
 const server = http.createServer((req, res) => {
   if (req.url === '/' || req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -217,8 +224,21 @@ const server = http.createServer((req, res) => {
       service: 'wechat-deepseek-bot',
       isLoggedIn: isLoggedIn,
       uptime: process.uptime(),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      latestQrCode: latestQrCode
     }));
+  } else if (req.url === '/refresh-qrcode' || req.url === '/refresh') {
+    // 刷新二维码：重启登录流程
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      status: 'ok',
+      message: '正在重新启动登录流程，请等待10秒后刷新页面查看新二维码'
+    }));
+
+    console.log('🔄 收到刷新二维码请求，正在重启登录流程...');
+    setTimeout(() => {
+      restartBot();
+    }, 1000);
   } else {
     res.writeHead(404, { 'Content-Type': 'text/plain' });
     res.end('Not Found');
